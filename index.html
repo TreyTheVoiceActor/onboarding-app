@@ -2,18 +2,20 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8" />
-  <title>Onboarding – HR & IT</title>
+  <title>Onboarding – HR & Afd. leder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{--b:#0b5ed7;--bd:#dcdcdc}
     body{font-family:system-ui,Arial,Helvetica,sans-serif;margin:24px;line-height:1.45}
     h1{margin:0 0 10px}
-    .muted{color:#666}
     .wrap{max-width:1100px;margin:auto}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
     .tab{padding:10px 12px;border:1px solid var(--bd);border-bottom:none;border-radius:8px 8px 0 0;background:#f7f7f7;cursor:pointer}
     .tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:600}
-    .box{border:1px solid var(--bd);border-radius:0 8px 8px 8px;padding:16px;background:#fff}
+    .box{border:1px solid var(--bd);border-radius:0 8px 8px 8px;background:#fff}
+    .box-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd)}
+    .box-title{margin:0;font-size:18px}
+    .box-content{padding:16px}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     .col{flex:1 1 260px;min-width:240px}
     label{display:block;margin:10px 0 4px}
@@ -22,7 +24,7 @@
     button{padding:10px 14px;border:1px solid var(--b);background:var(--b);color:white;border-radius:6px;cursor:pointer}
     button.secondary{background:#fff;color:var(--b)}
     .hidden{display:none}
-    .ok{color:#0a7f2e}.err{color:#b00020}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;border:1px solid #ccf;margin-left:6px}
+    .ok{color:#0a7f2e}.err{color:#b00020}
     table{border-collapse:collapse;width:100%;margin-top:10px}
     th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}
     th{background:#f6f7f9}
@@ -31,124 +33,137 @@
 <body>
 <div class="wrap">
   <h1>Onboarding</h1>
-  <div class="muted">
-    Flow: <strong>HR</strong> opretter → <strong>IT/Afd. leder</strong> udfylder → <strong>Brugere</strong> → <strong>Admin</strong>.
-    <span class="pill">Kode: 123</span>
-  </div>
 
   <div class="tabs">
     <div class="tab active" data-tab="hr">HR – Opret</div>
-    <div class="tab" data-tab="it">IT/Afd. leder – Rettigheder</div>
-    <div class="tab" data-tab="users">Brugere (kode)</div>
-    <div class="tab" data-tab="admin">Admin (kode)</div>
+    <div class="tab" data-tab="it">Afd. leder – Rettigheder</div>
+    <div class="tab" data-tab="users">Brugere</div>
+    <div class="tab" data-tab="admin">Admin</div>
   </div>
 
   <!-- HR -->
   <div class="box" id="tab-hr">
-    <div class="row">
-      <div class="col"><label>Adgangsnøgle</label><input id="keyHr" type="password" placeholder="fx 123" value="123"></div>
-    </div>
-    <h3>Medarbejder – grunddata</h3>
-    <div class="row">
-      <div class="col"><label>Fornavn</label><input id="firstName" required></div>
-      <div class="col"><label>Efternavn</label><input id="lastName" required></div>
-      <div class="col"><label>Initialer</label><input id="initials" placeholder="fx ABJ" required></div>
-      <div class="col"><label>Startdato</label><input id="startDate" type="date" required></div>
-      <div class="col"><label>Afdeling</label><select id="department" required></select></div>
-      <div class="col"><label>Title</label><input id="title" placeholder="Jobtitel" required></div>
-      <div class="col"><label>Leder initialer</label><input id="managerInitials" placeholder="fx JDO" required></div>
-      <div class="col"><label>Telefonnummer</label><input id="phone" type="tel" placeholder="+45 ..." required></div>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <div class="col">
-        <button onclick="create()">Opret medarbejder</button>
-        <button class="secondary" onclick="clearHR()">Ryd</button>
-        <div id="hrMsg" class="muted" style="margin-top:8px"></div>
+    <div class="box-head">
+      <h3 class="box-title">HR – Opret</h3>
+      <div>
+        <button class="secondary" onclick="toggleLock('#tab-hr')">Lås/Åbn felter</button>
       </div>
     </div>
-  </div>
-
-  <!-- IT -->
-  <div class="box hidden" id="tab-it">
-    <div class="row">
-      <div class="col"><label>Adgangsnøgle</label><input id="keyIt" type="password" placeholder="fx 123" value="123"></div>
-      <div class="col"><label>Onboarding-ID</label><input id="lookupId" placeholder="OB-YYYYMMDD-XXXX"></div>
-      <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadById()">Hent</button></div>
-    </div>
-
-    <div id="itData" class="hidden">
-      <h3>Medarbejder (read-only)</h3>
+    <div class="box-content">
       <div class="row">
-        <div class="col"><label>Navn</label><input id="roName" disabled></div>
-        <div class="col"><label>Initialer</label><input id="roInitials" disabled></div>
-        <div class="col"><label>Afdeling</label><input id="roDep" disabled></div>
-        <div class="col"><label>Startdato</label><input id="roStart" disabled></div>
-        <div class="col"><label>Title</label><input id="roTitle" disabled></div>
-        <div class="col"><label>Leder (initialer)</label><input id="roManagerInit" disabled></div>
-        <div class="col"><label>Telefon</label><input id="roPhone" disabled></div>
-      </div>
-
-      <h3>IT rettigheder</h3>
-      <div class="row">
-        <div class="col">
-          <label>Fil rettigheder</label>
-          <div class="inline">
-            <select id="rightsFiles"></select>
-            <span id="filesSameWrap" class="hidden">(initialer): <input id="rightsFilesSame" type="text" placeholder="fx JDO"></span>
-          </div>
-        </div>
-        <div class="col">
-          <label>AX rettigheder</label>
-          <div class="inline">
-            <select id="rightsAX"></select>
-            <span id="axSameWrap" class="hidden">(initialer): <input id="rightsAXSame" type="text" placeholder="fx JDO"></span>
-          </div>
-        </div>
-        <div class="col">
-          <label>D4 Infonet rettigheder</label>
-          <div class="inline">
-            <select id="rightsD4"></select>
-            <span id="d4SameWrap" class="hidden">(initialer): <input id="rightsD4Same" type="text" placeholder="fx JDO"></span>
-          </div>
-        </div>
+        <div class="col"><label>Adgangskode</label><input id="keyHr" type="password" placeholder="fx 123" value="123"></div>
       </div>
 
       <div class="row">
-        <div class="col"><label>PC</label>
-          <select id="pcType">
-            <option value="Ingen">Ingen</option>
-            <option value="Bærbar">Bærbar</option>
-            <option value="Stationær">Stationær</option>
-          </select>
-        </div>
-        <div class="col"><label>Docking station</label>
-          <select id="docking"><option>Ja</option><option>Nej</option></select>
-        </div>
-        <div class="col"><label>Antal skærme</label>
-          <input id="screens" type="number" min="0" max="6" value="2">
-        </div>
-      </div>
-
-      <h3>Særlig software</h3>
-      <div class="row">
-        <div class="col">
-          <label>Vælg</label>
-          <select id="softwareSelectIT">
-            <option>Som standard</option>
-            <option>Microsoft Office</option>
-            <option>365 installeres</option>
-          </select>
-        </div>
-        <div class="col">
-          <label>Ekstra (valgfrit)</label>
-          <input id="softwareExtraIT" placeholder="Fx Power BI, AutoCAD ...">
-        </div>
+        <div class="col"><label>Fornavn</label><input id="firstName" required></div>
+        <div class="col"><label>Efternavn</label><input id="lastName" required></div>
+        <div class="col"><label>Initialer</label><input id="initials" placeholder="fx ABJ" required></div>
+        <div class="col"><label>Startdato</label><input id="startDate" type="date" required></div>
+        <div class="col"><label>Afdeling</label><select id="department" required></select></div>
+        <div class="col"><label>Title</label><input id="title" placeholder="Jobtitel" required></div>
+        <div class="col"><label>Leder initialer</label><input id="managerInitials" placeholder="fx JDO — husk STORE bogstaver" required></div>
+        <div class="col"><label>Telefonnummer</label><input id="phone" type="tel" placeholder="+45 ..." required></div>
       </div>
 
       <div class="row" style="margin-top:8px">
         <div class="col">
-          <button onclick="saveIT()">Gem IT rettigheder</button>
-          <div id="itMsg" class="muted" style="margin-top:8px"></div>
+          <button onclick="create()">Opret bruger</button>
+          <button class="secondary" onclick="clearHR()">Ryd</button>
+          <div id="hrMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Afd. leder -->
+  <div class="box hidden" id="tab-it">
+    <div class="box-head">
+      <h3 class="box-title">Afd. leder – Rettigheder</h3>
+      <div>
+        <button class="secondary" onclick="toggleLock('#tab-it')">Lås/Åbn felter</button>
+      </div>
+    </div>
+    <div class="box-content">
+      <div class="row">
+        <div class="col"><label>Adgangskode</label><input id="keyIt" type="password" placeholder="fx 123" value="123"></div>
+        <div class="col"><label>Bruger-ID</label><input id="lookupId" placeholder="OB-YYYYMMDD-XXXX"></div>
+        <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadById()">Hent</button></div>
+      </div>
+
+      <div id="itData" class="hidden">
+        <h3>Medarbejder (read-only)</h3>
+        <div class="row">
+          <div class="col"><label>Navn</label><input id="roName" disabled></div>
+          <div class="col"><label>Initialer</label><input id="roInitials" disabled></div>
+          <div class="col"><label>Afdeling</label><input id="roDep" disabled></div>
+          <div class="col"><label>Startdato</label><input id="roStart" disabled></div>
+          <div class="col"><label>Title</label><input id="roTitle" disabled></div>
+          <div class="col"><label>Leder (initialer)</label><input id="roManagerInit" disabled></div>
+          <div class="col"><label>Telefon</label><input id="roPhone" disabled></div>
+        </div>
+
+        <h3>IT rettigheder</h3>
+        <div class="row">
+          <div class="col">
+            <label>Fil rettigheder</label>
+            <div class="inline">
+              <select id="rightsFiles"></select>
+              <span id="filesSameWrap" class="hidden">(initialer): <input id="rightsFilesSame" type="text" placeholder="fx JDO"></span>
+            </div>
+          </div>
+          <div class="col">
+            <label>AX rettigheder</label>
+            <div class="inline">
+              <select id="rightsAX"></select>
+              <span id="axSameWrap" class="hidden">(initialer): <input id="rightsAXSame" type="text" placeholder="fx JDO"></span>
+            </div>
+          </div>
+          <div class="col">
+            <label>D4 Infonet rettigheder</label>
+            <div class="inline">
+              <select id="rightsD4"></select>
+              <span id="d4SameWrap" class="hidden">(initialer): <input id="rightsD4Same" type="text" placeholder="fx JDO"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col"><label>PC</label>
+            <select id="pcType">
+              <option value="Ingen">Ingen</option>
+              <option value="Bærbar">Bærbar</option>
+              <option value="Stationær">Stationær</option>
+            </select>
+          </div>
+          <div class="col"><label>Docking station</label>
+            <select id="docking"><option>Ja</option><option>Nej</option></select>
+          </div>
+          <div class="col"><label>Antal skærme</label>
+            <input id="screens" type="number" min="0" max="6" value="2">
+          </div>
+        </div>
+
+        <h3>Særlig software</h3>
+        <div class="row">
+          <div class="col">
+            <label>Vælg</label>
+            <select id="softwareSelectIT">
+              <option>Som standard</option>
+              <option>Microsoft Office</option>
+              <option>365 installeres</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>Ekstra (valgfrit)</label>
+            <input id="softwareExtraIT" placeholder="Fx Power BI, AutoCAD ...">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <div class="col">
+            <button onclick="saveIT()">Gem IT rettigheder</button>
+            <div id="itMsg" class="muted" style="margin-top:8px"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -156,31 +171,39 @@
 
   <!-- Brugere -->
   <div class="box hidden" id="tab-users">
-    <div class="row">
-      <div class="col"><label>Kode</label><input id="viewKey" type="password" placeholder="123" value="123"></div>
-      <div class="col"><label>Søg</label><input id="searchUsers" placeholder="Søg (ID/navn/leder/afdeling)"></div>
-      <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadUsers()">Vis</button></div>
+    <div class="box-head">
+      <h3 class="box-title">Brugere</h3>
     </div>
-    <div id="usersMsg" class="muted" style="margin-top:8px"></div>
-    <table id="usersTbl" class="hidden">
-      <thead>
-        <tr>
-          <th>ID</th><th>Navn</th><th>Init</th><th>Start</th><th>Afdeling</th><th>Title</th><th>Leder init</th><th>Tlf</th>
-          <th>Fil</th><th>AX</th><th>D4</th><th>PC</th><th>Dock</th><th>Skærme</th><th>Software</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="box-content">
+      <div class="row">
+        <div class="col"><label>Kode</label><input id="viewKey" type="password" placeholder="123" value="123"></div>
+        <div class="col"><label>Søg</label><input id="searchUsers" placeholder="Søg (Bruger-ID/navn/leder/afdeling)"></div>
+        <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadUsers()">Vis</button></div>
+      </div>
+      <div id="usersMsg" class="muted" style="margin-top:8px"></div>
+      <table id="usersTbl" class="hidden">
+        <thead>
+          <tr>
+            <th>Bruger-ID</th><th>Navn</th><th>Init</th><th>Start</th><th>Afdeling</th><th>Title</th><th>Leder init</th><th>Tlf</th>
+            <th>Fil</th><th>AX</th><th>D4</th><th>PC</th><th>Dock</th><th>Skærme</th><th>Software</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Admin -->
   <div class="box hidden" id="tab-admin">
-    <div class="row">
-      <div class="col"><label>Admin-kode</label><input id="adminKey" type="password" placeholder="123" value="123"></div>
-      <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadConfig()">Hent konfig</button></div>
+    <div class="box-head">
+      <h3 class="box-title">Admin</h3>
     </div>
+    <div class="box-content">
+      <div class="row">
+        <div class="col"><label>Admin-kode</label><input id="adminKey" type="password" placeholder="123" value="123"></div>
+        <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadConfig()">Hent konfig</button></div>
+      </div>
 
-    <div id="adminArea" class="hidden">
       <h3>Leder-initialer → email</h3>
       <div class="row">
         <div class="col">
@@ -205,14 +228,14 @@
 
       <h3 style="margin-top:16px">Slet brugere</h3>
       <div class="row">
-        <div class="col"><label>Søg</label><input id="adminSearch" placeholder="Søg (ID/navn/initialer)"></div>
+        <div class="col"><label>Søg</label><input id="adminSearch" placeholder="Søg (Bruger-ID/navn/initialer)"></div>
         <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadAdminUsers()">Opdatér liste</button></div>
       </div>
       <div id="adminUsersMsg" class="muted" style="margin-top:8px"></div>
       <table id="adminUsersTbl" class="hidden">
         <thead>
           <tr>
-            <th>ID</th><th>Navn</th><th>Init</th><th>Leder init</th><th>Afdeling</th><th></th>
+            <th>Bruger-ID</th><th>Navn</th><th>Init</th><th>Leder init</th><th>Afdeling</th><th></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -237,20 +260,7 @@ const RIGHTS_OPTIONS = [
 
 const $ = s => document.querySelector(s);
 
-function fillDepartments(selId){
-  const sel = $(selId); sel.innerHTML='';
-  DEPARTMENTS.forEach(d=>{ const o=document.createElement('option'); o.textContent=d; o.value=d; sel.appendChild(o); });
-}
-function fillRights(selectId, wrapId){
-  const sel = $(selectId); sel.innerHTML='';
-  RIGHTS_OPTIONS.forEach(r=>{ const o=document.createElement('option'); o.textContent=r.value; o.value=r.key; sel.appendChild(o); });
-  sel.addEventListener('change', ()=>{
-    const wrap = $(wrapId);
-    wrap.classList.toggle('hidden', sel.value !== 'same');
-    if (sel.value !== 'same') wrap.querySelector('input').value = '';
-  });
-  sel.value = 'none';
-}
+// faner
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -260,14 +270,41 @@ document.querySelectorAll('.tab').forEach(t=>{
     $(`#tab-${tab}`).classList.remove('hidden');
   });
 });
+
+// init dropdowns
 (function init(){
-  fillDepartments('#department');
-  fillRights('#rightsFiles','#filesSameWrap');
-  fillRights('#rightsAX','#axSameWrap');
-  fillRights('#rightsD4','#d4SameWrap');
+  const dep = $('#department'); dep.innerHTML='';
+  DEPARTMENTS.forEach(d=>{ const o=document.createElement('option'); o.textContent=d; o.value=d; dep.appendChild(o); });
+
+  function addRights(selectId, wrapId){
+    const sel = $(selectId); sel.innerHTML='';
+    RIGHTS_OPTIONS.forEach(r=>{ const o=document.createElement('option'); o.textContent=r.value; o.value=r.key; sel.appendChild(o); });
+    sel.addEventListener('change', ()=>{
+      const wrap = $(wrapId);
+      wrap.classList.toggle('hidden', sel.value !== 'same');
+      if (sel.value !== 'same') wrap.querySelector('input').value = '';
+    });
+    sel.value = 'none';
+  }
+  addRights('#rightsFiles','#filesSameWrap');
+  addRights('#rightsAX','#axSameWrap');
+  addRights('#rightsD4','#d4SameWrap');
 })();
 
-// ---- HR ----
+// Lås/Åbn felter i en boks (toggle disabled for inputs/selects/textarea, bortset fra kode- og knapfelter)
+function toggleLock(rootSel){
+  const root = document.querySelector(rootSel);
+  const fields = root.querySelectorAll('input, select, textarea');
+  const isLocked = Array.from(fields).every(el => el.disabled || el.type==='password' || el.id.startsWith('ro')); // simple check
+  fields.forEach(el=>{
+    if (el.type==='password') return;     // lad koder være aktive
+    if (el.closest('.box-head')) return;  // ingen knapper i header
+    if (el.id.startsWith('ro')) return;   // read-only felter
+    el.disabled = !isLocked;              // lås hvis pt. ulåst, ellers åbn
+  });
+}
+
+// HR
 function readHR(){
   return {
     key: $('#keyHr').value.trim(),
@@ -294,12 +331,11 @@ async function create(){
     const r = await fetch('/api/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
     const res = await r.json();
     if(res.ok){
-      const mailTxt = res.mail?.sent ? ' (leder-mail sendt)' :
-                      res.mail?.reason==='no_recipient' ? ' (ingen leder-email i Admin mapping)' :
-                      ' (mail ikke sendt – mangler SMTP env)';
-      msg.innerHTML = `<span class="ok">Oprettet! Onboarding-ID: <strong>${res.id}</strong></span>${mailTxt}`;
+      msg.innerHTML = `<span class="ok">Oprettet! Bruger-ID: <strong>${res.id}</strong></span> (leder-mail sendt)`;
       clearHR(false);
-    } else msg.innerHTML = `<span class="err">${res.error||'Fejl'}</span>`;
+    } else {
+      msg.innerHTML = `<span class="err">Oprettelse afbrudt: ${res.error||'Kunne ikke sende leder-mail'}</span>`;
+    }
   }catch(e){ msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
 function clearHR(resetKey=true){
@@ -308,10 +344,10 @@ function clearHR(resetKey=true){
   if(resetKey) $('#keyHr').value='';
 }
 
-// ---- IT ----
+// Afd. leder
 async function loadById(){
   const id=$('#lookupId').value.trim(), key=$('#keyIt').value.trim(), msg=$('#itMsg');
-  if(!id||!key){ msg.innerHTML = `<span class="err">Udfyld både Onboarding-ID og adgangsnøgle.</span>`; return; }
+  if(!id||!key){ msg.innerHTML = `<span class="err">Udfyld både Bruger-ID og adgangskode.</span>`; return; }
   msg.textContent='Henter...';
   try{
     const r = await fetch(`/api/get/${encodeURIComponent(id)}?key=${encodeURIComponent(key)}`);
@@ -338,7 +374,7 @@ async function loadById(){
       $('#softwareSelectIT').value = e.softwareSelect || 'Som standard';
       $('#softwareExtraIT').value  = e.softwareExtra || '';
       msg.textContent='Klar.';
-    } else { $('#itData').classList.add('hidden'); msg.innerHTML = `<span class="err">${res.error||'ID ikke fundet.'}</span>`; }
+    } else { $('#itData').classList.add('hidden'); msg.innerHTML = `<span class="err">${res.error||'Bruger-ID ikke fundet.'}</span>`; }
   }catch(e){ msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
 function rpair(selId,sameId){ const mode=$(selId).value; const same=$(sameId).value.trim(); return {mode,same}; }
@@ -385,7 +421,7 @@ async function saveIT(){
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
 
-// ---- Brugere ----
+// Brugere
 async function loadUsers(){
   const key=$('#viewKey').value.trim(), q=$('#searchUsers').value.trim();
   const msg=$('#usersMsg'), tbl=$('#usersTbl'), body=$('#usersTbl tbody');
@@ -411,7 +447,7 @@ async function loadUsers(){
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
 
-// ---- Admin ----
+// Admin
 function parseLeaderMap(str){
   const map={};
   (str||'').split('\n').forEach(line=>{
@@ -433,15 +469,14 @@ async function loadConfig(){
     const r=await fetch(`/api/config/get?key=${encodeURIComponent(key)}`);
     const res=await r.json();
     if(!res.ok){ msg.innerHTML=`<span class="err">${res.error||'Fejl'}</span>`; return; }
-    $('#adminArea').classList.remove('hidden');
     $('#leaderMap').value = toLeaderText(res.config?.leaderEmails||{});
     $('#notifyHr').value = res.config?.notify?.hr || '';
     $('#notifyIt').value = res.config?.notify?.it || '';
     msg.textContent='Klar.';
-    loadAdminUsers(); // autoload liste
+    // auto-load admin users
+    loadAdminUsers();
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
-
 async function saveConfig(){
   const key=$('#adminKey').value.trim(), msg=$('#adminMsg');
   const leaderEmails=parseLeaderMap($('#leaderMap').value);
@@ -456,12 +491,10 @@ async function saveConfig(){
     msg.innerHTML = res.ok ? `<span class="ok">Konfiguration gemt.</span>` : `<span class="err">${res.error||'Fejl'}</span>`;
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
-
 function downloadCSV(){
   const key=$('#adminKey').value.trim(); if(!key){ $('#adminMsg').innerHTML=`<span class="err">Indtast admin-kode.</span>`; return; }
   window.open(`/api/export?key=${encodeURIComponent(key)}`,'_blank');
 }
-
 async function loadAdminUsers(){
   const admKey=$('#adminKey').value.trim(), q=$('#adminSearch').value.trim();
   const msg=$('#adminUsersMsg'), tbl=$('#adminUsersTbl'), body=$('#adminUsersTbl tbody');
@@ -490,12 +523,6 @@ async function delUser(id){
     if(res.ok){ loadAdminUsers(); } else { alert(res.error||'Fejl'); }
   }catch(e){ alert(e.message||'Netværksfejl'); }
 }
-
-// init
-fillDepartments('#department');
-fillRights('#rightsFiles','#filesSameWrap');
-fillRights('#rightsAX','#axSameWrap');
-fillRights('#rightsD4','#d4SameWrap');
 </script>
 </body>
 </html>
