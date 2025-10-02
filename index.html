@@ -1,11 +1,380 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
-  <title>Onboarding</title>
+  <meta charset="UTF-8" />
+  <title>Onboarding – HR & IT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{--b:#0b5ed7;--bd:#dcdcdc}
+    body{font-family:system-ui,Arial,Helvetica,sans-serif;margin:24px;line-height:1.45}
+    h1{margin:0 0 10px}
+    .muted{color:#666}
+    .wrap{max-width:1000px;margin:auto}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+    .tab{padding:10px 12px;border:1px solid var(--bd);border-bottom:none;border-radius:8px 8px 0 0;background:#f7f7f7;cursor:pointer}
+    .tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:600}
+    .box{border:1px solid var(--bd);border-radius:0 8px 8px 8px;padding:16px;background:#fff}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .col{flex:1 1 260px;min-width:240px}
+    label{display:block;margin:10px 0 4px}
+    input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
+    .inline{display:flex;gap:8px;align-items:center}
+    .inline input[type="text"]{flex:0 0 140px}
+    button{padding:10px 14px;border:1px solid var(--b);background:var(--b);color:white;border-radius:6px;cursor:pointer}
+    button.secondary{background:#fff;color:var(--b)}
+    .hidden{display:none}
+    .ok{color:#0a7f2e}
+    .err{color:#b00020}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;border:1px solid #ccf;margin-left:6px}
+    hr{border:none;border-top:1px solid var(--bd);margin:10px 0}
+    .hint{font-size:12px;color:#777;margin-top:4px}
+  </style>
 </head>
 <body>
-  <h1>Onboarding virker ✅</h1>
-  <p>Test API: <a href="/api/ping" target="_blank">/api/ping</a></p>
+<div class="wrap">
+  <h1>Onboarding</h1>
+  <div class="muted">
+    To-trins proces: <strong>HR</strong> opretter → <strong>IT/Afd. leder</strong> udfylder senere.
+    <span class="pill">Adgangsnøgle: 123</span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="hr">Trin 1 – HR (opret medarbejder)</div>
+    <div class="tab" data-tab="it">Trin 2 – IT/Afd. leder (udfyld rettigheder)</div>
+  </div>
+
+  <!-- HR -->
+  <div class="box" id="tab-hr">
+    <div class="row">
+      <div class="col"><label>Adgangsnøgle</label><input id="keyHr" type="password" placeholder="fx 123" value="123"></div>
+    </div>
+
+    <h3>Medarbejder – grunddata</h3>
+    <div class="row">
+      <div class="col"><label>Fornavn</label><input id="firstName" required></div>
+      <div class="col"><label>Efternavn</label><input id="lastName" required></div>
+      <div class="col"><label>Initialer</label><input id="initials" placeholder="fx ABJ" required></div>
+      <div class="col"><label>Startdato</label><input id="startDate" type="date" required></div>
+      <div class="col"><label>Afdeling</label><select id="department" required></select></div>
+      <div class="col"><label>Title</label><input id="title" placeholder="Jobtitel" required></div>
+      <div class="col"><label>Nærmeste leder</label><input id="manager" placeholder="Navn på leder" required></div>
+      <div class="col"><label>Telefonnummer</label><input id="phone" type="tel" placeholder="+45 ..." required></div>
+    </div>
+
+    <h3>Særlig software</h3>
+    <div class="row">
+      <div class="col">
+        <label>Vælg</label>
+        <select id="softwareSelect">
+          <option>Som standard</option>
+          <option>Microsoft Office</option>
+          <option>365 installeres</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Ekstra (valgfrit)</label>
+        <input id="softwareExtra" placeholder="Fx Power BI, AutoCAD ...">
+        <div class="hint">Brug dette felt til alt udover valget til venstre.</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div class="col">
+        <button onclick="create()">Opret medarbejder</button>
+        <button class="secondary" onclick="clearHR()">Ryd</button>
+        <div id="hrMsg" class="muted" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IT -->
+  <div class="box hidden" id="tab-it">
+    <div class="row">
+      <div class="col"><label>Adgangsnøgle</label><input id="keyIt" type="password" placeholder="fx 123" value="123"></div>
+      <div class="col"><label>Onboarding-ID</label><input id="lookupId" placeholder="OB-YYYYMMDD-XXXX"></div>
+      <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadById()">Hent</button></div>
+    </div>
+
+    <div id="itData" class="hidden">
+      <h3>Medarbejder (read-only)</h3>
+      <div class="row">
+        <div class="col"><label>Navn</label><input id="roName" disabled></div>
+        <div class="col"><label>Initialer</label><input id="roInitials" disabled></div>
+        <div class="col"><label>Afdeling</label><input id="roDep" disabled></div>
+        <div class="col"><label>Startdato</label><input id="roStart" disabled></div>
+        <div class="col"><label>Title</label><input id="roTitle" disabled></div>
+        <div class="col"><label>Nærmeste leder</label><input id="roManager" disabled></div>
+        <div class="col"><label>Telefon</label><input id="roPhone" disabled></div>
+        <div class="col"><label>Særlig software (valgt)</label><input id="roSoft" disabled></div>
+      </div>
+
+      <h3 style="margin-top:10px">IT rettigheder (udfyldes af afd. leder)</h3>
+      <div class="row">
+        <div class="col">
+          <label>Fil rettigheder</label>
+          <div class="inline">
+            <select id="rightsFiles"></select>
+            <span id="filesSameWrap" class="hidden">(initialer): <input id="rightsFilesSame" type="text" placeholder="fx JDO"></span>
+          </div>
+        </div>
+        <div class="col">
+          <label>AX rettigheder</label>
+          <div class="inline">
+            <select id="rightsAX"></select>
+            <span id="axSameWrap" class="hidden">(initialer): <input id="rightsAXSame" type="text" placeholder="fx JDO"></span>
+          </div>
+        </div>
+        <div class="col">
+          <label>D4 Infonet rettigheder</label>
+          <div class="inline">
+            <select id="rightsD4"></select>
+            <span id="d4SameWrap" class="hidden">(initialer): <input id="rightsD4Same" type="text" placeholder="fx JDO"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>PC</label>
+          <select id="pcType">
+            <option value="Ingen">Ingen</option>
+            <option value="Bærbar">Bærbar</option>
+            <option value="Stationær">Stationær</option>
+          </select>
+        </div>
+        <div class="col"><label>Docking station</label>
+          <select id="docking"><option>Ja</option><option>Nej</option></select>
+        </div>
+        <div class="col"><label>Antal skærme</label>
+          <input id="screens" type="number" min="0" max="6" value="2">
+        </div>
+      </div>
+
+      <h3 style="margin-top:10px">Særlig software</h3>
+      <div class="row">
+        <div class="col">
+          <label>Vælg</label>
+          <select id="softwareSelectIT">
+            <option>Som standard</option>
+            <option>Microsoft Office</option>
+            <option>365 installeres</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>Ekstra (valgfrit)</label>
+          <input id="softwareExtraIT" placeholder="Fx Power BI, AutoCAD ...">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div class="col">
+          <button onclick="saveIT()">Gem IT rettigheder</button>
+          <div id="itMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --------- data til dropdowns ---------
+const DEPARTMENTS = [
+  "Produktion FZ","FZ Process","Team White FZ","Team White spareparts","Production Backend",
+  "Team Black","Shipping & Warehouse","Indkøb","R&D","Software","IT","FAE",
+  "Managment","Finance","Sales & Customer service","QA","HR","Sustainability",
+  "Projects","Utility & Facility"
+];
+const RIGHTS_OPTIONS = [
+  { value: "Ingen rettigheder", key: "none" },
+  { value: "Det samme som: (initialer)", key: "same" },
+  { value: "defineres efter jobstart", key: "after" }
+];
+
+// --------- små hjælpere ---------
+const $ = s => document.querySelector(s);
+function fillDepartments(selId){
+  const sel = $(selId);
+  DEPARTMENTS.forEach(d => { const o=document.createElement('option'); o.textContent=d; o.value=d; sel.appendChild(o); });
+}
+function fillRights(selectId, wrapId){
+  const sel = $(selectId);
+  RIGHTS_OPTIONS.forEach(r => { const o=document.createElement('option'); o.textContent=r.value; o.value=r.key; sel.appendChild(o); });
+  sel.addEventListener('change', ()=>{
+    const wrap = $(wrapId);
+    wrap.classList.toggle('hidden', sel.value !== 'same');
+    if (sel.value !== 'same') wrap.querySelector('input').value = '';
+  });
+  sel.value = 'none';
+}
+function labelFor(mode, same){
+  if (mode==='none') return 'Ingen rettigheder';
+  if (mode==='after') return 'defineres efter jobstart';
+  if (mode==='same') return `Det samme som: ${same || '(mangler initialer)'}`;
+  return '';
+}
+
+// --------- tabs ---------
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    $('#tab-hr').classList.toggle('hidden', tab !== 'hr');
+    $('#tab-it').classList.toggle('hidden', tab !== 'it');
+  });
+});
+
+// --------- init ---------
+(function init(){
+  fillDepartments('#department');
+  fillRights('#rightsFiles','#filesSameWrap');
+  fillRights('#rightsAX','#axSameWrap');
+  fillRights('#rightsD4','#d4SameWrap');
+})();
+
+// --------- HR (create) ---------
+function readHR(){
+  return {
+    key: $('#keyHr').value.trim(),
+    firstName: $('#firstName').value.trim(),
+    lastName: $('#lastName').value.trim(),
+    initials: $('#initials').value.trim(),
+    startDate: $('#startDate').value,
+    department: $('#department').value,
+    title: $('#title').value.trim(),
+    manager: $('#manager').value.trim(),
+    phone: $('#phone').value.trim(),
+    softwareSelect: $('#softwareSelect').value,
+    softwareExtra: $('#softwareExtra').value.trim()
+  };
+}
+function validateHR(d){
+  const req = ['key','firstName','lastName','initials','startDate','department','title','manager','phone'];
+  for(const k of req) if(!d[k]) return `Felt mangler: ${k}`;
+  return null;
+}
+async function create(){
+  const d = readHR();
+  const msg = $('#hrMsg');
+  const err = validateHR(d);
+  if (err) { msg.innerHTML = `<span class="err">${err}</span>`; return; }
+  msg.textContent = 'Opretter...';
+  try{
+    const r = await fetch('/api/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d) });
+    const res = await r.json();
+    if (res.ok){
+      msg.innerHTML = `<span class="ok">Oprettet! Onboarding-ID: <strong>${res.id}</strong></span><br>Del ID’et med afdelingslederen til Trin 2.`;
+      clearHR(false);
+    } else {
+      msg.innerHTML = `<span class="err">${res.error||'Fejl'}</span>`;
+    }
+  } catch(e){
+    msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`;
+  }
+}
+function clearHR(resetKey=true){
+  ['firstName','lastName','initials','startDate','title','manager','phone','softwareExtra'].forEach(id=>$('#'+id).value='');
+  $('#department').selectedIndex = 0;
+  $('#softwareSelect').value = 'Som standard';
+  if (resetKey) $('#keyHr').value = '';
+}
+
+// --------- IT (load + save) ---------
+async function loadById(){
+  const id = $('#lookupId').value.trim();
+  const key = $('#keyIt').value.trim();
+  const msg = $('#itMsg');
+  if(!id || !key){ msg.innerHTML = `<span class="err">Udfyld både Onboarding-ID og adgangsnøgle.</span>`; return; }
+  msg.textContent = 'Henter...';
+  try{
+    const r = await fetch(`/api/get/${encodeURIComponent(id)}?key=${encodeURIComponent(key)}`);
+    const res = await r.json();
+    if(res.ok){
+      const e = res.entry;
+      $('#itData').classList.remove('hidden');
+      $('#roName').value = `${e.firstName} ${e.lastName}`;
+      $('#roInitials').value = e.initials||'';
+      $('#roDep').value = e.department||'';
+      $('#roStart').value = e.startDate||'';
+      $('#roTitle').value = e.title||'';
+      $('#roManager').value = e.manager||'';
+      $('#roPhone').value = e.phone||'';
+      $('#roSoft').value = [e.softwareSelect, e.softwareExtra].filter(Boolean).join(' | ');
+
+      // preset IT felter
+      ['rightsFiles','rightsAX','rightsD4'].forEach(id=>document.querySelector('#'+id).value='none');
+      ['filesSameWrap','axSameWrap','d4SameWrap'].forEach(id=>document.querySelector('#'+id).classList.add('hidden'));
+      ['rightsFilesSame','rightsAXSame','rightsD4Same'].forEach(id=>document.querySelector('#'+id).value='');
+      $('#pcType').value = e.pcType || 'Ingen';
+      $('#docking').value = e.docking || 'Ja';
+      $('#screens').value = e.screens || 2;
+      $('#softwareSelectIT').value = e.softwareSelect || 'Som standard';
+      $('#softwareExtraIT').value = e.softwareExtra || '';
+
+      msg.textContent = 'Klar.';
+    } else {
+      $('#itData').classList.add('hidden');
+      msg.innerHTML = `<span class="err">${res.error||'ID ikke fundet.'}</span>`;
+    }
+  }catch(e){
+    msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`;
+  }
+}
+
+function readIT(){
+  function r(selId, sameId){
+    const mode = document.querySelector(selId).value;
+    const same = document.querySelector(sameId).value.trim();
+    return { mode, same, label: labelFor(mode, same) };
+  }
+  return {
+    rightsFiles: r('#rightsFiles','#rightsFilesSame').mode,
+    rightsFilesSame: r('#rightsFiles','#rightsFilesSame').same,
+    rightsAX: r('#rightsAX','#rightsAXSame').mode,
+    rightsAXSame: r('#rightsAX','#rightsAXSame').same,
+    rightsD4: r('#rightsD4','#rightsD4Same').mode,
+    rightsD4Same: r('#rightsD4','#rightsD4Same').same,
+    pcType: $('#pcType').value,
+    docking: $('#docking').value,
+    screens: $('#screens').value,
+    softwareSelect: $('#softwareSelectIT').value,
+    softwareExtra: $('#softwareExtraIT').value.trim()
+  };
+}
+function validateIT(d){
+  if(d.rightsFiles==='same' && !d.rightsFilesSame) return 'Angiv initialer for Fil rettigheder (Det samme som).';
+  if(d.rightsAX==='same' && !d.rightsAXSame) return 'Angiv initialer for AX rettigheder (Det samme som).';
+  if(d.rightsD4==='same' && !d.rightsD4Same) return 'Angiv initialer for D4 Infonet (Det samme som).';
+  return null;
+}
+async function saveIT(){
+  const id = $('#lookupId').value.trim();
+  const key = $('#keyIt').value.trim();
+  const payload = readIT();
+  const msg = $('#itMsg');
+  const err = validateIT(payload);
+  if (err) { msg.innerHTML = `<span class="err">${err}</span>`; return; }
+  msg.textContent = 'Gemmer...';
+  try{
+    const r = await fetch(`/api/update/${encodeURIComponent(id)}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key, ...payload })
+    });
+    const res = await r.json();
+    if (res.ok) {
+      msg.innerHTML = `<span class="ok">IT rettigheder gemt.</span>`;
+    } else {
+      msg.innerHTML = `<span class="err">${res.error||'Kunne ikke gemme.'}</span>`;
+    }
+  } catch(e){
+    msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`;
+  }
+}
+
+// udfyld afdelinger på HR-form
+(function(){ const sel = document.querySelector('#department'); DEPARTMENTS.forEach(d=>{const o=document.createElement('option'); o.textContent=d; o.value=d; sel.appendChild(o);}); })();
+</script>
 </body>
 </html>
+
+
