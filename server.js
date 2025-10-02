@@ -8,8 +8,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
-// === Koder (alle = 123) ===
-const ACCESS_KEY = process.env.ACCESS_KEY || '123'; // HR/IT
+// === Koder (alle = 123 som default) ===
+const ACCESS_KEY = process.env.ACCESS_KEY || '123'; // HR/Afd. leder
 const VIEW_KEY   = process.env.VIEW_KEY   || '123'; // Brugere
 const ADMIN_KEY  = process.env.ADMIN_KEY  || '123'; // Admin
 
@@ -23,7 +23,7 @@ app.use((req,res,next)=>{
 app.use(express.json({ limit: '1mb' }));
 app.use((req,_res,next)=>{ console.log(new Date().toISOString(), req.method, req.url); next(); });
 
-// Serve index
+// Forside
 app.get('/', (_req,res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // === DB & Config ===
@@ -55,7 +55,6 @@ function getTransportOrNull(){
   const transporter = nodemailer.createTransport({ host, port, secure, auth:{ user, pass } });
   return { transporter, from };
 }
-
 function shortRights(mode, same){
   if (mode==='none') return 'Ingen';
   if (mode==='after') return 'Efter jobstart';
@@ -64,34 +63,32 @@ function shortRights(mode, same){
 }
 
 // Mail ved oprettelse → leder (via initialer)
-async function sendOnboardingMail(entry){
+async function sendLeaderMail(entry){
   const cfg = readJson(CONFIG_FILE, { leaderEmails: {} });
   const to = cfg.leaderEmails?.[entry.managerInitials] || '';
   const mailCfg = getTransportOrNull();
-  if (!mailCfg || !to) {
-    const reason = !to ? 'no_recipient' : 'no_smtp';
-    console.log('Springer leder-mail over:', reason);
-    return { sent:false, reason };
-  }
+  if (!to)   return { sent:false, reason:'no_recipient' };
+  if (!mailCfg) return { sent:false, reason:'no_smtp' };
+
   const baseUrl = process.env.PUBLIC_URL || '';
   const link = baseUrl || '(indsæt jeres URL)';
 
   const mail = {
     from: mailCfg.from,
     to,
-    subject: `Onboarding-ID for ${entry.firstName} ${entry.lastName}: ${entry.id}`,
+    subject: `Bruger-ID for ${entry.firstName} ${entry.lastName}: ${entry.id}`,
     text:
 `Hej ${entry.managerInitials},
 
 Der er oprettet en ny medarbejder.
 
-Onboarding-ID: ${entry.id}
+Bruger-ID: ${entry.id}
 Navn: ${entry.firstName} ${entry.lastName}
 Afdeling: ${entry.department}
 Startdato: ${entry.startDate}
 
 Udfyld IT-rettigheder her: ${link}
-Adgangsnøgle (IT): ${ACCESS_KEY}
+Adgangskode (Afd. leder): ${ACCESS_KEY}
 
 Mvh
 Onboarding-systemet`
@@ -107,23 +104,21 @@ Onboarding-systemet`
   }
 }
 
-// Mail ved færdiggørelse → HR & IT (fra Admin)
+// Mail ved færdiggørelse → HR & IT
 async function sendCompletionMails(entry){
   const cfg = readJson(CONFIG_FILE, { notify: { hr:"", it:"" } });
   const hrTo = cfg.notify?.hr || '';
   const itTo = cfg.notify?.it || '';
   const mailCfg = getTransportOrNull();
-  if (!mailCfg || (!hrTo && !itTo)) {
-    const reason = !mailCfg ? 'no_smtp' : 'no_recipients';
-    console.log('Springer HR/IT-mail over:', reason);
-    return { hrSent:false, itSent:false, reason };
-  }
+  if (!mailCfg) return { hrSent:false, itSent:false, reason:'no_smtp' };
+  if (!hrTo && !itTo) return { hrSent:false, itSent:false, reason:'no_recipients' };
+
   const baseUrl = process.env.PUBLIC_URL || '';
   const link = baseUrl || '(indsæt jeres URL)';
   const body =
 `Bruger er færdig (IT-rettigheder gemt).
 
-ID: ${entry.id}
+Bruger-ID: ${entry.id}
 Navn: ${entry.firstName} ${entry.lastName} (${entry.initials})
 Afdeling: ${entry.department}
 Title: ${entry.title}
@@ -170,44 +165,54 @@ Se systemet her: ${link}`;
 // === API ===
 app.get('/api/ping', (_req,res)=>res.json({ ok:true }));
 
-// HR opretter
+// HR opretter — nu OPRETTES KUN hvis leder-mail sendes med succes
 app.post('/api/create', async (req,res)=>{
   const { key, firstName, lastName, initials, startDate, department, title, managerInitials, phone } = req.body || {};
-  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangsnøgle.' });
+  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
   const required = { firstName, lastName, initials, startDate, department, title, managerInitials, phone };
   for (const [k,v] of Object.entries(required)) if(!v) return res.status(400).json({ ok:false, error:`Felt mangler: ${k}` });
 
-  const db = readJson(DATA_FILE, []);
-  const id = newId();
+  // Lav entry og ID men GEM IKKE endnu
   const entry = {
-    id, tsCreated: ts(),
+    id: newId(), tsCreated: ts(),
     firstName, lastName, initials, startDate, department, title, managerInitials, phone,
     rightsFiles:'', rightsFilesSame:'', rightsAX:'', rightsAXSame:'', rightsD4:'', rightsD4Same:'',
     pcType:'', docking:'', screens:'',
     softwareSelect:'', softwareExtra:'',
     tsUpdated:''
   };
+
+  // send mail til leder — kun hvis den lykkes, gemmes i DB
+  const mail = await sendLeaderMail(entry);
+  if (!mail.sent) {
+    const reason = mail.reason==='no_recipient'
+      ? 'Ingen email fundet for leder-initialer i Admin.'
+      : mail.reason==='no_smtp'
+        ? 'SMTP ikke sat (tjek env).'
+        : mail.error || 'Kunne ikke sende leder-mail.';
+    return res.status(500).json({ ok:false, error: reason });
+  }
+
+  const db = readJson(DATA_FILE, []);
   db.push(entry);
   writeJson(DATA_FILE, db);
-
-  const mail = await sendOnboardingMail(entry);
-  res.json({ ok:true, id, mail });
+  res.json({ ok:true, id: entry.id, mail });
 });
 
-// IT/Afd. leder henter én
+// Afd. leder henter én
 app.get('/api/get/:id', (req,res)=>{
   const key = req.query.key;
-  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangsnøgle.' });
+  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
   const db = readJson(DATA_FILE, []);
   const item = db.find(x=>x.id===req.params.id);
-  if (!item) return res.status(404).json({ ok:false, error:'ID ikke fundet.' });
+  if (!item) return res.status(404).json({ ok:false, error:'Bruger-ID ikke fundet.' });
   res.json({ ok:true, entry: item });
 });
 
-// IT/Afd. leder gemmer rettigheder → sender HR/IT mail
+// Afd. leder gemmer rettigheder → sender HR/IT mail
 app.post('/api/update/:id', async (req,res)=>{
   const { key, rightsFiles, rightsFilesSame, rightsAX, rightsAXSame, rightsD4, rightsD4Same, pcType, docking, screens, softwareSelect, softwareExtra } = req.body || {};
-  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangsnøgle.' });
+  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
 
   if (rightsFiles==='same' && !rightsFilesSame) return res.status(400).json({ ok:false, error:'Angiv initialer for Fil rettigheder (Det samme som).' });
   if (rightsAX==='same'   && !rightsAXSame)   return res.status(400).json({ ok:false, error:'Angiv initialer for AX rettigheder (Det samme som).' });
@@ -215,7 +220,7 @@ app.post('/api/update/:id', async (req,res)=>{
 
   const db = readJson(DATA_FILE, []);
   const i = db.findIndex(x=>x.id===req.params.id);
-  if (i === -1) return res.status(404).json({ ok:false, error:'ID ikke fundet.' });
+  if (i === -1) return res.status(404).json({ ok:false, error:'Bruger-ID ikke fundet.' });
 
   const cur = db[i];
   const updated = {
@@ -236,9 +241,7 @@ app.post('/api/update/:id', async (req,res)=>{
   db[i] = updated;
   writeJson(DATA_FILE, db);
 
-  // Send mails til HR & IT om færdiggørelse (best-effort)
   const notify = await sendCompletionMails(updated);
-
   res.json({ ok:true, notify });
 });
 
@@ -263,7 +266,7 @@ app.delete('/api/delete/:id', (req,res)=>{
   if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
   const db = readJson(DATA_FILE, []);
   const i = db.findIndex(e=>e.id===req.params.id);
-  if (i === -1) return res.status(404).json({ ok:false, error:'ID ikke fundet.' });
+  if (i === -1) return res.status(404).json({ ok:false, error:'Bruger-ID ikke fundet.' });
   db.splice(i,1);
   writeJson(DATA_FILE, db);
   res.json({ ok:true });
@@ -289,7 +292,7 @@ app.get('/api/export', (req,res)=>{
   res.send(csv);
 });
 
-// Admin config (leaderEmails + notify mails)
+// Admin konfig (lederEmails + notify hr/it)
 app.get('/api/config/get', (req,res)=>{
   const key = req.query.key;
   if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
@@ -299,7 +302,6 @@ app.get('/api/config/get', (req,res)=>{
 app.post('/api/config/save', (req,res)=>{
   const { key, leaderEmails, notify } = req.body || {};
   if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
-  const cur = readJson(CONFIG_FILE, { leaderEmails:{}, notify:{ hr:"", it:"" } });
   const next = {
     leaderEmails: leaderEmails || {},
     notify: { hr: (notify?.hr||"").trim(), it: (notify?.it||"").trim() }
