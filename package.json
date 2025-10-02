@@ -1,0 +1,12 @@
+{
+  "name": "onboarding-app",
+  "version": "1.0.0",
+  "description": "Simpel HR/IT onboarding app (Node + Express)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
