@@ -32,7 +32,7 @@
 <div class="wrap">
   <h1>Onboarding</h1>
   <div class="muted">
-    Flow: <strong>HR</strong> opretter → <strong>IT/Afd. leder</strong> udfylder → <strong>Brugere</strong> liste → <strong>Admin</strong> styrer “initialer → email” og sletter test.
+    Flow: <strong>HR</strong> opretter → <strong>IT/Afd. leder</strong> udfylder → <strong>Brugere</strong> → <strong>Admin</strong>.
     <span class="pill">Kode: 123</span>
   </div>
 
@@ -188,9 +188,16 @@
           <textarea id="leaderMap" rows="8" placeholder="ABJ = leder@firma.dk&#10;JDO = jdo@firma.dk"></textarea>
         </div>
       </div>
+
+      <h3 style="margin-top:16px">Notifikationer</h3>
+      <div class="row">
+        <div class="col"><label>HR-mail</label><input id="notifyHr" placeholder="hr@firma.dk"></div>
+        <div class="col"><label>IT-mail</label><input id="notifyIt" placeholder="it@firma.dk"></div>
+      </div>
+
       <div class="row" style="margin-top:8px">
         <div class="col">
-          <button onclick="saveConfig()">Gem mapping</button>
+          <button onclick="saveConfig()">Gem konfig</button>
           <button class="secondary" onclick="downloadCSV()">Download CSV</button>
           <div id="adminMsg" class="muted" style="margin-top:8px"></div>
         </div>
@@ -287,8 +294,8 @@ async function create(){
     const r = await fetch('/api/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
     const res = await r.json();
     if(res.ok){
-      const mailTxt = res.mail?.sent ? ' (mail sendt)' :
-                      res.mail?.reason==='no_recipient' ? ' (ingen email fundet for leder-initialer i Admin-mapping)' :
+      const mailTxt = res.mail?.sent ? ' (leder-mail sendt)' :
+                      res.mail?.reason==='no_recipient' ? ' (ingen leder-email i Admin mapping)' :
                       ' (mail ikke sendt – mangler SMTP env)';
       msg.innerHTML = `<span class="ok">Oprettet! Onboarding-ID: <strong>${res.id}</strong></span>${mailTxt}`;
       clearHR(false);
@@ -361,7 +368,20 @@ async function saveIT(){
   try{
     const r=await fetch(`/api/update/${encodeURIComponent(id)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,...payload})});
     const res=await r.json();
-    msg.innerHTML = res.ok ? `<span class="ok">IT rettigheder gemt.</span>` : `<span class="err">${res.error||'Kunne ikke gemme.'}</span>`;
+    if(res.ok){
+      const n = res.notify || {};
+      let info = 'IT rettigheder gemt.';
+      if (n.error) info += ` Mail-fejl: ${n.error}`;
+      else {
+        const parts = [];
+        parts.push(n.hrSent ? 'HR-mail sendt' : 'HR-mail ikke sendt');
+        parts.push(n.itSent ? 'IT-mail sendt' : 'IT-mail ikke sendt');
+        info += ' ' + parts.join(' · ');
+      }
+      msg.innerHTML = `<span class="ok">${info}</span>`;
+    } else {
+      msg.innerHTML = `<span class="err">${res.error||'Kunne ikke gemme.'}</span>`;
+    }
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
 
@@ -415,24 +435,33 @@ async function loadConfig(){
     if(!res.ok){ msg.innerHTML=`<span class="err">${res.error||'Fejl'}</span>`; return; }
     $('#adminArea').classList.remove('hidden');
     $('#leaderMap').value = toLeaderText(res.config?.leaderEmails||{});
+    $('#notifyHr').value = res.config?.notify?.hr || '';
+    $('#notifyIt').value = res.config?.notify?.it || '';
     msg.textContent='Klar.';
     loadAdminUsers(); // autoload liste
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
+
 async function saveConfig(){
   const key=$('#adminKey').value.trim(), msg=$('#adminMsg');
   const leaderEmails=parseLeaderMap($('#leaderMap').value);
+  const notify = { hr: $('#notifyHr').value.trim(), it: $('#notifyIt').value.trim() };
   msg.textContent='Gemmer...';
   try{
-    const r=await fetch('/api/config/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,leaderEmails})});
+    const r=await fetch('/api/config/save',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key,leaderEmails,notify})
+    });
     const res=await r.json();
-    msg.innerHTML = res.ok ? `<span class="ok">Mapping gemt.</span>` : `<span class="err">${res.error||'Fejl'}</span>`;
+    msg.innerHTML = res.ok ? `<span class="ok">Konfiguration gemt.</span>` : `<span class="err">${res.error||'Fejl'}</span>`;
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
+
 function downloadCSV(){
   const key=$('#adminKey').value.trim(); if(!key){ $('#adminMsg').innerHTML=`<span class="err">Indtast admin-kode.</span>`; return; }
   window.open(`/api/export?key=${encodeURIComponent(key)}`,'_blank');
 }
+
 async function loadAdminUsers(){
   const admKey=$('#adminKey').value.trim(), q=$('#adminSearch').value.trim();
   const msg=$('#adminUsersMsg'), tbl=$('#adminUsersTbl'), body=$('#adminUsersTbl tbody');
@@ -462,9 +491,8 @@ async function delUser(id){
   }catch(e){ alert(e.message||'Netværksfejl'); }
 }
 
-// init department
+// init
 fillDepartments('#department');
-// rights dropdowns
 fillRights('#rightsFiles','#filesSameWrap');
 fillRights('#rightsAX','#axSameWrap');
 fillRights('#rightsD4','#d4SameWrap');
