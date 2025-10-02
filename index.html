@@ -9,7 +9,7 @@
     body{font-family:system-ui,Arial,Helvetica,sans-serif;margin:24px;line-height:1.45}
     h1{margin:0 0 10px}
     .muted{color:#666}
-    .wrap{max-width:1000px;margin:auto}
+    .wrap{max-width:1100px;margin:auto}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
     .tab{padding:10px 12px;border:1px solid var(--bd);border-bottom:none;border-radius:8px 8px 0 0;background:#f7f7f7;cursor:pointer}
     .tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:600}
@@ -19,28 +19,28 @@
     label{display:block;margin:10px 0 4px}
     input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
     .inline{display:flex;gap:8px;align-items:center}
-    .inline input[type="text"]{flex:0 0 140px}
     button{padding:10px 14px;border:1px solid var(--b);background:var(--b);color:white;border-radius:6px;cursor:pointer}
     button.secondary{background:#fff;color:var(--b)}
     .hidden{display:none}
-    .ok{color:#0a7f2e}
-    .err{color:#b00020}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;border:1px solid #ccf;margin-left:6px}
-    hr{border:none;border-top:1px solid var(--bd);margin:10px 0}
-    .hint{font-size:12px;color:#777;margin-top:4px}
+    .ok{color:#0a7f2e}.err{color:#b00020}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;border:1px solid #ccf;margin-left:6px}
+    table{border-collapse:collapse;width:100%;margin-top:10px}
+    th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}
+    th{background:#f6f7f9}
   </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Onboarding</h1>
   <div class="muted">
-    To-trins proces: <strong>HR</strong> opretter → <strong>IT/Afd. leder</strong> udfylder senere.
+    Flow: <strong>HR</strong> opretter → <strong>IT/Afd. leder</strong> udfylder → <strong>Brugere</strong> viser liste → <strong>Admin</strong> styrer email-opsætning.
     <span class="pill">Adgangsnøgle: 123</span>
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-tab="hr">Trin 1 – HR (opret medarbejder)</div>
-    <div class="tab" data-tab="it">Trin 2 – IT/Afd. leder (udfyld rettigheder)</div>
+    <div class="tab active" data-tab="hr">HR – Opret</div>
+    <div class="tab" data-tab="it">IT/Afd. leder – Rettigheder</div>
+    <div class="tab" data-tab="users">Brugere (kode)</div>
+    <div class="tab" data-tab="admin">Admin (kode)</div>
   </div>
 
   <!-- HR -->
@@ -48,7 +48,6 @@
     <div class="row">
       <div class="col"><label>Adgangsnøgle</label><input id="keyHr" type="password" placeholder="fx 123" value="123"></div>
     </div>
-
     <h3>Medarbejder – grunddata</h3>
     <div class="row">
       <div class="col"><label>Fornavn</label><input id="firstName" required></div>
@@ -60,24 +59,6 @@
       <div class="col"><label>Nærmeste leder</label><input id="manager" placeholder="Navn på leder" required></div>
       <div class="col"><label>Telefonnummer</label><input id="phone" type="tel" placeholder="+45 ..." required></div>
     </div>
-
-    <h3>Særlig software</h3>
-    <div class="row">
-      <div class="col">
-        <label>Vælg</label>
-        <select id="softwareSelect">
-          <option>Som standard</option>
-          <option>Microsoft Office</option>
-          <option>365 installeres</option>
-        </select>
-      </div>
-      <div class="col">
-        <label>Ekstra (valgfrit)</label>
-        <input id="softwareExtra" placeholder="Fx Power BI, AutoCAD ...">
-        <div class="hint">Brug dette felt til alt udover valget til venstre.</div>
-      </div>
-    </div>
-
     <div class="row" style="margin-top:8px">
       <div class="col">
         <button onclick="create()">Opret medarbejder</button>
@@ -105,10 +86,9 @@
         <div class="col"><label>Title</label><input id="roTitle" disabled></div>
         <div class="col"><label>Nærmeste leder</label><input id="roManager" disabled></div>
         <div class="col"><label>Telefon</label><input id="roPhone" disabled></div>
-        <div class="col"><label>Særlig software (valgt)</label><input id="roSoft" disabled></div>
       </div>
 
-      <h3 style="margin-top:10px">IT rettigheder (udfyldes af afd. leder)</h3>
+      <h3>IT rettigheder</h3>
       <div class="row">
         <div class="col">
           <label>Fil rettigheder</label>
@@ -149,7 +129,7 @@
         </div>
       </div>
 
-      <h3 style="margin-top:10px">Særlig software</h3>
+      <h3>Særlig software</h3>
       <div class="row">
         <div class="col">
           <label>Vælg</label>
@@ -173,10 +153,72 @@
       </div>
     </div>
   </div>
+
+  <!-- Brugere (view) -->
+  <div class="box hidden" id="tab-users">
+    <div class="row">
+      <div class="col"><label>Bruger-kode</label><input id="viewKey" type="password" placeholder="fx view123" value=""></div>
+      <div class="col"><label>Søg</label><input id="searchUsers" placeholder="Søg (ID/navn/leder/afdeling)"></div>
+      <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadUsers()">Vis</button></div>
+    </div>
+    <div id="usersMsg" class="muted" style="margin-top:8px"></div>
+    <table id="usersTbl" class="hidden">
+      <thead>
+        <tr>
+          <th>ID</th><th>Navn</th><th>Init</th><th>Start</th><th>Afdeling</th><th>Title</th><th>Leder</th><th>Telefon</th>
+          <th>Fil</th><th>AX</th><th>D4</th><th>PC</th><th>Dock</th><th>Skærme</th><th>Software</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Admin -->
+  <div class="box hidden" id="tab-admin">
+    <div class="row">
+      <div class="col"><label>Admin-kode</label><input id="adminKey" type="password" placeholder="fx admin123"></div>
+      <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadConfig()">Hent konfig</button></div>
+    </div>
+
+    <div id="adminArea" class="hidden">
+      <h3>SMTP opsætning (til email af Onboarding-ID)</h3>
+      <div class="row">
+        <div class="col"><label>SMTP host</label><input id="smtpHost"></div>
+        <div class="col"><label>SMTP port</label><input id="smtpPort" type="number" value="587"></div>
+        <div class="col"><label>Secure (465)</label>
+          <select id="smtpSecure">
+            <option value="false">false</option>
+            <option value="true">true</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col"><label>SMTP user</label><input id="smtpUser"></div>
+        <div class="col"><label>SMTP pass</label><input id="smtpPass" type="password"></div>
+        <div class="col"><label>From</label><input id="smtpFrom" placeholder="Onboarding <no-reply@firma.dk>"></div>
+      </div>
+
+      <h3>Leder → email mapping</h3>
+      <div class="row">
+        <div class="col">
+          <label>Én pr. linje (format: Leder Navn = mail@firma.dk)</label>
+          <textarea id="leaderMap" rows="8" placeholder="Jane Doe = jane@firma.dk&#10;John Smith = john@firma.dk"></textarea>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div class="col">
+          <button onclick="saveConfig()">Gem konfig</button>
+          <button class="secondary" onclick="downloadCSV()">Download CSV</button>
+          <div id="adminMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-// --------- data til dropdowns ---------
+// ---- data til dropdowns ----
 const DEPARTMENTS = [
   "Produktion FZ","FZ Process","Team White FZ","Team White spareparts","Production Backend",
   "Team Black","Shipping & Warehouse","Indkøb","R&D","Software","IT","FAE",
@@ -189,14 +231,16 @@ const RIGHTS_OPTIONS = [
   { value: "defineres efter jobstart", key: "after" }
 ];
 
-// --------- små hjælpere ---------
 const $ = s => document.querySelector(s);
+
 function fillDepartments(selId){
   const sel = $(selId);
+  sel.innerHTML = '';
   DEPARTMENTS.forEach(d => { const o=document.createElement('option'); o.textContent=d; o.value=d; sel.appendChild(o); });
 }
 function fillRights(selectId, wrapId){
   const sel = $(selectId);
+  sel.innerHTML = '';
   RIGHTS_OPTIONS.forEach(r => { const o=document.createElement('option'); o.textContent=r.value; o.value=r.key; sel.appendChild(o); });
   sel.addEventListener('change', ()=>{
     const wrap = $(wrapId);
@@ -212,18 +256,18 @@ function labelFor(mode, same){
   return '';
 }
 
-// --------- tabs ---------
+// ---- tabs ----
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     const tab = t.dataset.tab;
-    $('#tab-hr').classList.toggle('hidden', tab !== 'hr');
-    $('#tab-it').classList.toggle('hidden', tab !== 'it');
+    ['hr','it','users','admin'].forEach(id => $(`#tab-${id}`).classList.add('hidden'));
+    $(`#tab-${tab}`).classList.remove('hidden');
   });
 });
 
-// --------- init ---------
+// ---- init ----
 (function init(){
   fillDepartments('#department');
   fillRights('#rightsFiles','#filesSameWrap');
@@ -231,7 +275,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   fillRights('#rightsD4','#d4SameWrap');
 })();
 
-// --------- HR (create) ---------
+// ---- HR (create) ----
 function readHR(){
   return {
     key: $('#keyHr').value.trim(),
@@ -242,9 +286,7 @@ function readHR(){
     department: $('#department').value,
     title: $('#title').value.trim(),
     manager: $('#manager').value.trim(),
-    phone: $('#phone').value.trim(),
-    softwareSelect: $('#softwareSelect').value,
-    softwareExtra: $('#softwareExtra').value.trim()
+    phone: $('#phone').value.trim()
   };
 }
 function validateHR(d){
@@ -262,7 +304,8 @@ async function create(){
     const r = await fetch('/api/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d) });
     const res = await r.json();
     if (res.ok){
-      msg.innerHTML = `<span class="ok">Oprettet! Onboarding-ID: <strong>${res.id}</strong></span><br>Del ID’et med afdelingslederen til Trin 2.`;
+      const mailTxt = res.mail?.sent ? ' (mail sendt til leder)' : ' (mail ikke sendt – tjek Admin SMTP & leder-email)';
+      msg.innerHTML = `<span class="ok">Oprettet! Onboarding-ID: <strong>${res.id}</strong></span>${mailTxt}`;
       clearHR(false);
     } else {
       msg.innerHTML = `<span class="err">${res.error||'Fejl'}</span>`;
@@ -272,13 +315,12 @@ async function create(){
   }
 }
 function clearHR(resetKey=true){
-  ['firstName','lastName','initials','startDate','title','manager','phone','softwareExtra'].forEach(id=>$('#'+id).value='');
+  ['firstName','lastName','initials','startDate','title','manager','phone'].forEach(id=>$('#'+id).value='');
   $('#department').selectedIndex = 0;
-  $('#softwareSelect').value = 'Som standard';
   if (resetKey) $('#keyHr').value = '';
 }
 
-// --------- IT (load + save) ---------
+// ---- IT (load + save) ----
 async function loadById(){
   const id = $('#lookupId').value.trim();
   const key = $('#keyIt').value.trim();
@@ -298,17 +340,22 @@ async function loadById(){
       $('#roTitle').value = e.title||'';
       $('#roManager').value = e.manager||'';
       $('#roPhone').value = e.phone||'';
-      $('#roSoft').value = [e.softwareSelect, e.softwareExtra].filter(Boolean).join(' | ');
 
       // preset IT felter
-      ['rightsFiles','rightsAX','rightsD4'].forEach(id=>document.querySelector('#'+id).value='none');
-      ['filesSameWrap','axSameWrap','d4SameWrap'].forEach(id=>document.querySelector('#'+id).classList.add('hidden'));
-      ['rightsFilesSame','rightsAXSame','rightsD4Same'].forEach(id=>document.querySelector('#'+id).value='');
+      ['rightsFiles','rightsAX','rightsD4'].forEach(id=>document.querySelector('#'+id).value = e[id] || 'none');
+      $('#rightsFilesSame').value = e.rightsFilesSame || '';
+      $('#rightsAXSame').value   = e.rightsAXSame || '';
+      $('#rightsD4Same').value   = e.rightsD4Same || '';
+      document.querySelector('#filesSameWrap').classList.toggle('hidden', $('#rightsFiles').value!=='same');
+      document.querySelector('#axSameWrap').classList.toggle('hidden',   $('#rightsAX').value!=='same');
+      document.querySelector('#d4SameWrap').classList.toggle('hidden',   $('#rightsD4').value!=='same');
+
       $('#pcType').value = e.pcType || 'Ingen';
       $('#docking').value = e.docking || 'Ja';
       $('#screens').value = e.screens || 2;
+
       $('#softwareSelectIT').value = e.softwareSelect || 'Som standard';
-      $('#softwareExtraIT').value = e.softwareExtra || '';
+      $('#softwareExtraIT').value  = e.softwareExtra || '';
 
       msg.textContent = 'Klar.';
     } else {
@@ -321,10 +368,10 @@ async function loadById(){
 }
 
 function readIT(){
-  function r(selId, sameId){
-    const mode = document.querySelector(selId).value;
-    const same = document.querySelector(sameId).value.trim();
-    return { mode, same, label: labelFor(mode, same) };
+  function r(idSel, idSame){
+    const mode = $(idSel).value;
+    const same = $(idSame).value.trim();
+    return { mode, same };
   }
   return {
     rightsFiles: r('#rightsFiles','#rightsFilesSame').mode,
@@ -342,39 +389,136 @@ function readIT(){
 }
 function validateIT(d){
   if(d.rightsFiles==='same' && !d.rightsFilesSame) return 'Angiv initialer for Fil rettigheder (Det samme som).';
-  if(d.rightsAX==='same' && !d.rightsAXSame) return 'Angiv initialer for AX rettigheder (Det samme som).';
-  if(d.rightsD4==='same' && !d.rightsD4Same) return 'Angiv initialer for D4 Infonet (Det samme som).';
+  if(d.rightsAX==='same'   && !d.rightsAXSame)    return 'Angiv initialer for AX rettigheder (Det samme som).';
+  if(d.rightsD4==='same'   && !d.rightsD4Same)    return 'Angiv initialer for D4 Infonet (Det samme som).';
   return null;
 }
 async function saveIT(){
   const id = $('#lookupId').value.trim();
   const key = $('#keyIt').value.trim();
-  const payload = readIT();
   const msg = $('#itMsg');
+  const payload = readIT();
   const err = validateIT(payload);
   if (err) { msg.innerHTML = `<span class="err">${err}</span>`; return; }
   msg.textContent = 'Gemmer...';
   try{
     const r = await fetch(`/api/update/${encodeURIComponent(id)}`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ key, ...payload })
     });
     const res = await r.json();
-    if (res.ok) {
-      msg.innerHTML = `<span class="ok">IT rettigheder gemt.</span>`;
-    } else {
-      msg.innerHTML = `<span class="err">${res.error||'Kunne ikke gemme.'}</span>`;
-    }
-  } catch(e){
+    if (res.ok) msg.innerHTML = `<span class="ok">IT rettigheder gemt.</span>`;
+    else msg.innerHTML = `<span class="err">${res.error||'Kunne ikke gemme.'}</span>`;
+  }catch(e){ msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`; }
+}
+
+// ---- Brugere (view) ----
+async function loadUsers(){
+  const key = $('#viewKey').value.trim();
+  const q   = $('#searchUsers').value.trim();
+  const msg = $('#usersMsg');
+  const tbl = $('#usersTbl');
+  const body = $('#usersTbl tbody');
+  msg.textContent = 'Henter...';
+  tbl.classList.add('hidden');
+  try{
+    const r = await fetch(`/api/list?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}`);
+    const res = await r.json();
+    if(!res.ok){ msg.innerHTML = `<span class="err">${res.error||'Fejl'}</span>`; return; }
+    const arr = res.entries || [];
+    body.innerHTML = '';
+    arr.forEach(e=>{
+      const tr = document.createElement('tr');
+      const software = [e.softwareSelect, e.softwareExtra].filter(Boolean).join(' | ');
+      tr.innerHTML = `
+        <td>${e.id}</td><td>${e.firstName} ${e.lastName}</td><td>${e.initials}</td>
+        <td>${e.startDate}</td><td>${e.department}</td><td>${e.title}</td><td>${e.manager}</td><td>${e.phone}</td>
+        <td>${e.rightsFiles}${e.rightsFilesSame?` (${e.rightsFilesSame})`:""}</td>
+        <td>${e.rightsAX}${e.rightsAXSame?` (${e.rightsAXSame})`:""}</td>
+        <td>${e.rightsD4}${e.rightsD4Same?` (${e.rightsD4Same})`:""}</td>
+        <td>${e.pcType}</td><td>${e.docking}</td><td>${e.screens}</td><td>${software}</td>`;
+      body.appendChild(tr);
+    });
+    msg.textContent = `Viser ${arr.length} elementer.`;
+    tbl.classList.remove('hidden');
+  }catch(e){
     msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`;
   }
 }
 
+// ---- Admin ----
+function parseLeaderMap(str){
+  const map = {};
+  (str||'').split('\n').forEach(line=>{
+    const m = line.split('=');
+    if (m.length>=2){
+      const name = m[0].trim();
+      const mail = m.slice(1).join('=').trim();
+      if (name && mail) map[name] = mail;
+    }
+  });
+  return map;
+}
+function toLeaderText(map){
+  return Object.entries(map||{}).map(([k,v])=>`${k} = ${v}`).join('\n');
+}
+
+async function loadConfig(){
+  const key = $('#adminKey').value.trim();
+  const msg = $('#adminMsg');
+  msg.textContent = 'Henter konfig...';
+  try{
+    const r = await fetch(`/api/config/get?key=${encodeURIComponent(key)}`);
+    const res = await r.json();
+    if(!res.ok){ msg.innerHTML = `<span class="err">${res.error||'Fejl'}</span>`; return; }
+    const c = res.config || {};
+    $('#adminArea').classList.remove('hidden');
+    $('#smtpHost').value = c.smtp?.host || '';
+    $('#smtpPort').value = c.smtp?.port || 587;
+    $('#smtpSecure').value = String(!!c.smtp?.secure);
+    $('#smtpUser').value = c.smtp?.user || '';
+    $('#smtpPass').value = c.smtp?.pass || '';
+    $('#smtpFrom').value = c.smtp?.from || '';
+    $('#leaderMap').value = toLeaderText(c.leaderEmails || {});
+    msg.textContent = 'Klar.';
+  }catch(e){ msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`; }
+}
+
+async function saveConfig(){
+  const key = $('#adminKey').value.trim();
+  const msg = $('#adminMsg');
+  const smtp = {
+    host: $('#smtpHost').value.trim(),
+    port: Number($('#smtpPort').value||587),
+    secure: $('#smtpSecure').value === 'true',
+    user: $('#smtpUser').value.trim(),
+    pass: $('#smtpPass').value,
+    from: $('#smtpFrom').value.trim()
+  };
+  const leaderEmails = parseLeaderMap($('#leaderMap').value);
+  msg.textContent = 'Gemmer konfig...';
+  try{
+    const r = await fetch('/api/config/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key, smtp, leaderEmails })
+    });
+    const res = await r.json();
+    if(res.ok) msg.innerHTML = `<span class="ok">Konfiguration gemt.</span>`;
+    else msg.innerHTML = `<span class="err">${res.error||'Fejl'}</span>`;
+  }catch(e){ msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`; }
+}
+
+function downloadCSV(){
+  const key = $('#adminKey').value.trim();
+  if(!key){ $('#adminMsg').innerHTML = `<span class="err">Indtast admin-kode først.</span>`; return; }
+  window.open(`/api/export?key=${encodeURIComponent(key)}`, '_blank');
+}
+
 // udfyld afdelinger på HR-form
-(function(){ const sel = document.querySelector('#department'); DEPARTMENTS.forEach(d=>{const o=document.createElement('option'); o.textContent=d; o.value=d; sel.appendChild(o);}); })();
+(function(){ fillDepartments('#department'); })();
+fillRights('#rightsFiles','#filesSameWrap');
+fillRights('#rightsAX','#axSameWrap');
+fillRights('#rightsD4','#d4SameWrap');
 </script>
 </body>
 </html>
-
-
