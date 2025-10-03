@@ -20,6 +20,7 @@
     .col{flex:1 1 260px;min-width:240px}
     label{display:block;margin:10px 0 4px}
     input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
+    textarea{min-height:110px}
     .inline{display:flex;gap:8px;align-items:center}
     button{padding:10px 14px;border:1px solid var(--b);background:var(--b);color:white;border-radius:6px;cursor:pointer}
     button.secondary{background:#fff;color:var(--b)}
@@ -159,6 +160,13 @@
           </div>
         </div>
 
+        <h3>Øvrige bemærkninger</h3>
+        <div class="row">
+          <div class="col">
+            <textarea id="leaderNotes" placeholder="Skriv evt. særlige ønsker, adgangsbehov, udstyr, tidsplan m.m."></textarea>
+          </div>
+        </div>
+
         <div class="row" style="margin-top:8px">
           <div class="col">
             <button onclick="saveIT()">Gem IT rettigheder</button>
@@ -177,7 +185,7 @@
     <div class="box-content">
       <div class="row">
         <div class="col"><label>Kode</label><input id="viewKey" type="password" placeholder="123" value="123"></div>
-        <div class="col"><label>Søg</label><input id="searchUsers" placeholder="Søg (Bruger-ID/navn/leder/afdeling)"></div>
+        <div class="col"><label>Søg</label><input id="searchUsers" placeholder="Søg (Bruger-ID/navn/leder/afdeling/tekst)"></div>
         <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadUsers()">Vis</button></div>
       </div>
       <div id="usersMsg" class="muted" style="margin-top:8px"></div>
@@ -185,7 +193,7 @@
         <thead>
           <tr>
             <th>Bruger-ID</th><th>Navn</th><th>Init</th><th>Start</th><th>Afdeling</th><th>Title</th><th>Leder init</th><th>Tlf</th>
-            <th>Fil</th><th>AX</th><th>D4</th><th>PC</th><th>Dock</th><th>Skærme</th><th>Software</th>
+            <th>Fil</th><th>AX</th><th>D4</th><th>PC</th><th>Dock</th><th>Skærme</th><th>Software</th><th>Øvrige bemærkninger</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -208,7 +216,7 @@
       <div class="row">
         <div class="col">
           <label>Én pr. linje (format: ABJ = leder@firma.dk)</label>
-          <textarea id="leaderMap" rows="8" placeholder="ABJ = leder@firma.dk&#10;JDO = jdo@firma.dk"></textarea>
+          <textarea id="leaderMap" rows="6" placeholder="ABJ = leder@firma.dk&#10;JDO = jdo@firma.dk"></textarea>
         </div>
       </div>
 
@@ -217,6 +225,14 @@
         <div class="col"><label>HR-mail</label><input id="notifyHr" placeholder="hr@firma.dk"></div>
         <div class="col"><label>IT-mail</label><input id="notifyIt" placeholder="it@firma.dk"></div>
       </div>
+
+      <h3 style="margin-top:16px">Adgangskoder</h3>
+      <div class="row">
+        <div class="col"><label>Adgangskode (HR/Afd. leder)</label><input id="keyAccess" type="text" placeholder="fx 123"></div>
+        <div class="col"><label>Brugere-kode</label><input id="keyView" type="text" placeholder="fx 123"></div>
+        <div class="col"><label>Admin-kode</label><input id="keyAdmin" type="text" placeholder="fx 123"></div>
+      </div>
+      <div class="row"><div class="col"><small>Ændringer gemmes i konfigurationen og gælder straks for nye kald.</small></div></div>
 
       <div class="row" style="margin-top:8px">
         <div class="col">
@@ -228,7 +244,7 @@
 
       <h3 style="margin-top:16px">Slet brugere</h3>
       <div class="row">
-        <div class="col"><label>Søg</label><input id="adminSearch" placeholder="Søg (Bruger-ID/navn/initialer)"></div>
+        <div class="col"><label>Søg</label><input id="adminSearch" placeholder="Søg (Bruger-ID/navn/initialer/tekst)"></div>
         <div class="col" style="align-self:flex-end;"><button class="secondary" onclick="loadAdminUsers()">Opdatér liste</button></div>
       </div>
       <div id="adminUsersMsg" class="muted" style="margin-top:8px"></div>
@@ -291,16 +307,18 @@ document.querySelectorAll('.tab').forEach(t=>{
   addRights('#rightsD4','#d4SameWrap');
 })();
 
-// Lås/Åbn felter i en boks (toggle disabled for inputs/selects/textarea, bortset fra kode- og knapfelter)
+// Lås/Åbn felter
 function toggleLock(rootSel){
   const root = document.querySelector(rootSel);
-  const fields = root.querySelectorAll('input, select, textarea');
-  const isLocked = Array.from(fields).every(el => el.disabled || el.type==='password' || el.id.startsWith('ro')); // simple check
+  const fields = root.querySelectorAll('input, select, textarea, button');
+  const anyEnabled = Array.from(fields).some(el => !el.disabled && el.tagName !== 'BUTTON' && el.type !== 'password' && !el.id.startsWith('ro'));
+  const disableTo = anyEnabled ? true : false;
   fields.forEach(el=>{
-    if (el.type==='password') return;     // lad koder være aktive
-    if (el.closest('.box-head')) return;  // ingen knapper i header
-    if (el.id.startsWith('ro')) return;   // read-only felter
-    el.disabled = !isLocked;              // lås hvis pt. ulåst, ellers åbn
+    if (el.type === 'password') return;     // koder forbliver aktive
+    if (el.closest('.box-head')) return;    // knapper i header
+    if (el.tagName === 'BUTTON') return;    // knapper
+    if (el.id.startsWith('ro')) return;     // readonly visning
+    el.disabled = disableTo;
   });
 }
 
@@ -373,6 +391,7 @@ async function loadById(){
       $('#screens').value = e.screens || 2;
       $('#softwareSelectIT').value = e.softwareSelect || 'Som standard';
       $('#softwareExtraIT').value  = e.softwareExtra || '';
+      $('#leaderNotes').value = e.leaderNotes || '';
       msg.textContent='Klar.';
     } else { $('#itData').classList.add('hidden'); msg.innerHTML = `<span class="err">${res.error||'Bruger-ID ikke fundet.'}</span>`; }
   }catch(e){ msg.innerHTML = `<span class="err">${e.message||'Netværksfejl'}</span>`; }
@@ -387,7 +406,8 @@ function readIT(){
     rightsAX:a.mode, rightsAXSame:a.same,
     rightsD4:d.mode, rightsD4Same:d.same,
     pcType:$('#pcType').value, docking:$('#docking').value, screens:$('#screens').value,
-    softwareSelect:$('#softwareSelectIT').value, softwareExtra:$('#softwareExtraIT').value.trim()
+    softwareSelect:$('#softwareSelectIT').value, softwareExtra:$('#softwareExtraIT').value.trim(),
+    leaderNotes: $('#leaderNotes').value
   };
 }
 function validateIT(x){
@@ -440,7 +460,8 @@ async function loadUsers(){
         <td>${e.rightsFiles}${e.rightsFilesSame?` (${e.rightsFilesSame})`:""}</td>
         <td>${e.rightsAX}${e.rightsAXSame?` (${e.rightsAXSame})`:""}</td>
         <td>${e.rightsD4}${e.rightsD4Same?` (${e.rightsD4Same})`:""}</td>
-        <td>${e.pcType}</td><td>${e.docking}</td><td>${e.screens}</td><td>${software}</td>`;
+        <td>${e.pcType}</td><td>${e.docking}</td><td>${e.screens}</td><td>${software}</td>
+        <td>${(e.leaderNotes||'').replaceAll('<','&lt;')}</td>`;
       body.appendChild(tr);
     });
     msg.textContent=`Viser ${res.entries.length} elementer.`; tbl.classList.remove('hidden');
@@ -472,8 +493,10 @@ async function loadConfig(){
     $('#leaderMap').value = toLeaderText(res.config?.leaderEmails||{});
     $('#notifyHr').value = res.config?.notify?.hr || '';
     $('#notifyIt').value = res.config?.notify?.it || '';
-    msg.textContent='Klar.';
-    // auto-load admin users
+    $('#keyAccess').value = res.config?.keys?.access || '123';
+    $('#keyView').value   = res.config?.keys?.view   || '123';
+    $('#keyAdmin').value  = res.config?.keys?.admin  || '123';
+    msg.textContent='Klar. Husk at bruge de nye koder fremover.';
     loadAdminUsers();
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
@@ -481,14 +504,19 @@ async function saveConfig(){
   const key=$('#adminKey').value.trim(), msg=$('#adminMsg');
   const leaderEmails=parseLeaderMap($('#leaderMap').value);
   const notify = { hr: $('#notifyHr').value.trim(), it: $('#notifyIt').value.trim() };
+  const keys = {
+    access: $('#keyAccess').value.trim()||'123',
+    view:   $('#keyView').value.trim()||'123',
+    admin:  $('#keyAdmin').value.trim()||'123'
+  };
   msg.textContent='Gemmer...';
   try{
     const r=await fetch('/api/config/save',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key,leaderEmails,notify})
+      body:JSON.stringify({key,leaderEmails,notify,keys})
     });
     const res=await r.json();
-    msg.innerHTML = res.ok ? `<span class="ok">Konfiguration gemt.</span>` : `<span class="err">${res.error||'Fejl'}</span>`;
+    msg.innerHTML = res.ok ? `<span class="ok">Konfiguration gemt. Koder gælder fra nu af.</span>` : `<span class="err">${res.error||'Fejl'}</span>`;
   }catch(e){ msg.innerHTML=`<span class="err">${e.message||'Netværksfejl'}</span>`; }
 }
 function downloadCSV(){
