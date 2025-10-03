@@ -8,11 +8,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
-// === Koder (alle = 123 som default) ===
-const ACCESS_KEY = process.env.ACCESS_KEY || '123'; // HR/Afd. leder
-const VIEW_KEY   = process.env.VIEW_KEY   || '123'; // Brugere
-const ADMIN_KEY  = process.env.ADMIN_KEY  || '123'; // Admin
-
 app.use((req,res,next)=>{
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET,POST,DELETE,OPTIONS');
@@ -37,7 +32,25 @@ function readJson(fp, fallback){ try{ return JSON.parse(fs.readFileSync(fp,'utf8
 function writeJson(fp, obj){ fs.writeFileSync(fp, JSON.stringify(obj,null,2), 'utf8'); }
 
 ensureFile(DATA_FILE, []);
-ensureFile(CONFIG_FILE, { leaderEmails: {}, notify: { hr: "", it: "" } });
+ensureFile(CONFIG_FILE, {
+  leaderEmails: {},
+  notify: { hr: "", it: "" },
+  keys: {
+    access: process.env.ACCESS_KEY || '123',
+    view:   process.env.VIEW_KEY   || '123',
+    admin:  process.env.ADMIN_KEY  || '123'
+  }
+});
+
+function getKeys(){
+  const cfg = readJson(CONFIG_FILE, {});
+  const k = cfg.keys || {};
+  return {
+    access: k.access || process.env.ACCESS_KEY || '123',
+    view:   k.view   || process.env.VIEW_KEY   || '123',
+    admin:  k.admin  || process.env.ADMIN_KEY  || '123'
+  };
+}
 
 function ymd(d){ return d.toISOString().slice(0,10).replace(/-/g,''); }
 function ts(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
@@ -67,7 +80,7 @@ async function sendLeaderMail(entry){
   const cfg = readJson(CONFIG_FILE, { leaderEmails: {} });
   const to = cfg.leaderEmails?.[entry.managerInitials] || '';
   const mailCfg = getTransportOrNull();
-  if (!to)   return { sent:false, reason:'no_recipient' };
+  if (!to)      return { sent:false, reason:'no_recipient' };
   if (!mailCfg) return { sent:false, reason:'no_smtp' };
 
   const baseUrl = process.env.PUBLIC_URL || '';
@@ -88,7 +101,7 @@ Afdeling: ${entry.department}
 Startdato: ${entry.startDate}
 
 Udfyld IT-rettigheder her: ${link}
-Adgangskode (Afd. leder): ${ACCESS_KEY}
+Adgangskode (Afd. leder): ${getKeys().access}
 
 Mvh
 Onboarding-systemet`
@@ -115,6 +128,10 @@ async function sendCompletionMails(entry){
 
   const baseUrl = process.env.PUBLIC_URL || '';
   const link = baseUrl || '(indsæt jeres URL)';
+
+  const notes = (entry.leaderNotes||'').trim();
+  const notesBlock = notes ? `\nØvrige bemærkninger:\n${notes}\n` : '';
+
   const body =
 `Bruger er færdig (IT-rettigheder gemt).
 
@@ -138,7 +155,7 @@ Udstyr:
 
 Software:
 - ${[entry.softwareSelect, entry.softwareExtra].filter(Boolean).join(' | ') || 'Som standard'}
-
+${notesBlock}
 Se systemet her: ${link}`;
 
   const subject = `Onboarding færdig: ${entry.firstName} ${entry.lastName} (${entry.id})`;
@@ -165,24 +182,24 @@ Se systemet her: ${link}`;
 // === API ===
 app.get('/api/ping', (_req,res)=>res.json({ ok:true }));
 
-// HR opretter — nu OPRETTES KUN hvis leder-mail sendes med succes
+// HR opretter — OPRETTES KUN hvis leder-mail sendes ok
 app.post('/api/create', async (req,res)=>{
+  const keys = getKeys();
   const { key, firstName, lastName, initials, startDate, department, title, managerInitials, phone } = req.body || {};
-  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
+  if (key !== keys.access) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
   const required = { firstName, lastName, initials, startDate, department, title, managerInitials, phone };
   for (const [k,v] of Object.entries(required)) if(!v) return res.status(400).json({ ok:false, error:`Felt mangler: ${k}` });
 
-  // Lav entry og ID men GEM IKKE endnu
   const entry = {
     id: newId(), tsCreated: ts(),
     firstName, lastName, initials, startDate, department, title, managerInitials, phone,
     rightsFiles:'', rightsFilesSame:'', rightsAX:'', rightsAXSame:'', rightsD4:'', rightsD4Same:'',
     pcType:'', docking:'', screens:'',
     softwareSelect:'', softwareExtra:'',
+    leaderNotes:'', // ny
     tsUpdated:''
   };
 
-  // send mail til leder — kun hvis den lykkes, gemmes i DB
   const mail = await sendLeaderMail(entry);
   if (!mail.sent) {
     const reason = mail.reason==='no_recipient'
@@ -201,18 +218,20 @@ app.post('/api/create', async (req,res)=>{
 
 // Afd. leder henter én
 app.get('/api/get/:id', (req,res)=>{
+  const keys = getKeys();
   const key = req.query.key;
-  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
+  if (key !== keys.access) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
   const db = readJson(DATA_FILE, []);
   const item = db.find(x=>x.id===req.params.id);
   if (!item) return res.status(404).json({ ok:false, error:'Bruger-ID ikke fundet.' });
   res.json({ ok:true, entry: item });
 });
 
-// Afd. leder gemmer rettigheder → sender HR/IT mail
+// Afd. leder gemmer rettigheder (+ notat) → sender HR/IT mail
 app.post('/api/update/:id', async (req,res)=>{
-  const { key, rightsFiles, rightsFilesSame, rightsAX, rightsAXSame, rightsD4, rightsD4Same, pcType, docking, screens, softwareSelect, softwareExtra } = req.body || {};
-  if (key !== ACCESS_KEY) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
+  const keys = getKeys();
+  const { key, rightsFiles, rightsFilesSame, rightsAX, rightsAXSame, rightsD4, rightsD4Same, pcType, docking, screens, softwareSelect, softwareExtra, leaderNotes } = req.body || {};
+  if (key !== keys.access) return res.status(403).json({ ok:false, error:'Forkert adgangskode.' });
 
   if (rightsFiles==='same' && !rightsFilesSame) return res.status(400).json({ ok:false, error:'Angiv initialer for Fil rettigheder (Det samme som).' });
   if (rightsAX==='same'   && !rightsAXSame)   return res.status(400).json({ ok:false, error:'Angiv initialer for AX rettigheder (Det samme som).' });
@@ -236,6 +255,7 @@ app.post('/api/update/:id', async (req,res)=>{
     screens: screens ?? cur.screens,
     softwareSelect: softwareSelect ?? cur.softwareSelect,
     softwareExtra: softwareExtra ?? cur.softwareExtra,
+    leaderNotes: leaderNotes ?? cur.leaderNotes, // ny
     tsUpdated: ts()
   };
   db[i] = updated;
@@ -247,13 +267,14 @@ app.post('/api/update/:id', async (req,res)=>{
 
 // Liste (Brugere/Admin)
 app.get('/api/list', (req,res)=>{
+  const keys = getKeys();
   const key = req.query.key;
-  if (key !== VIEW_KEY && key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
+  if (key !== keys.view && key !== keys.admin) return res.status(403).json({ ok:false, error:'Forkert kode.' });
   const q = (req.query.q||'').toLowerCase();
   const db = readJson(DATA_FILE, []);
   const filtered = db.filter(e=>{
     const hay = [
-      e.id, e.firstName, e.lastName, e.initials, e.department, e.title, e.managerInitials, e.phone
+      e.id, e.firstName, e.lastName, e.initials, e.department, e.title, e.managerInitials, e.phone, e.leaderNotes||''
     ].join(' ').toLowerCase();
     return hay.includes(q);
   }).sort((a,b)=> (a.tsCreated < b.tsCreated ? 1 : -1));
@@ -262,8 +283,9 @@ app.get('/api/list', (req,res)=>{
 
 // Slet bruger (Admin)
 app.delete('/api/delete/:id', (req,res)=>{
+  const keys = getKeys();
   const key = req.query.key;
-  if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
+  if (key !== keys.admin) return res.status(403).json({ ok:false, error:'Forkert kode.' });
   const db = readJson(DATA_FILE, []);
   const i = db.findIndex(e=>e.id===req.params.id);
   if (i === -1) return res.status(404).json({ ok:false, error:'Bruger-ID ikke fundet.' });
@@ -274,14 +296,15 @@ app.delete('/api/delete/:id', (req,res)=>{
 
 // Export CSV (Admin)
 app.get('/api/export', (req,res)=>{
+  const keys = getKeys();
   const key = req.query.key;
-  if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
+  if (key !== keys.admin) return res.status(403).json({ ok:false, error:'Forkert kode.' });
 
   const db = readJson(DATA_FILE, []);
   const head = [
     "id","tsCreated","firstName","lastName","initials","startDate","department","title","managerInitials","phone",
     "rightsFiles","rightsFilesSame","rightsAX","rightsAXSame","rightsD4","rightsD4Same",
-    "pcType","docking","screens","softwareSelect","softwareExtra","tsUpdated"
+    "pcType","docking","screens","softwareSelect","softwareExtra","leaderNotes","tsUpdated"
   ];
   const rows = db.map(e => head.map(h => (e[h]??"").toString().replaceAll('"','""')));
   const lines = [head.join(';'), ...rows.map(r => r.map(v => v.includes(';')||v.includes('\n')?`"${v}"`:v).join(';'))];
@@ -292,19 +315,28 @@ app.get('/api/export', (req,res)=>{
   res.send(csv);
 });
 
-// Admin konfig (lederEmails + notify hr/it)
+// Admin konfig (leaderEmails + notify hr/it + keys)
 app.get('/api/config/get', (req,res)=>{
+  const keys = getKeys();
   const key = req.query.key;
-  if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
-  const cfg = readJson(CONFIG_FILE, { leaderEmails:{}, notify:{ hr:"", it:"" } });
-  res.json({ ok:true, config: { leaderEmails: cfg.leaderEmails || {}, notify: cfg.notify || { hr:"", it:"" } } });
+  if (key !== keys.admin) return res.status(403).json({ ok:false, error:'Forkert kode.' });
+  const cfg = readJson(CONFIG_FILE, { leaderEmails:{}, notify:{ hr:"", it:"" }, keys:getKeys() });
+  res.json({ ok:true, config: { leaderEmails: cfg.leaderEmails || {}, notify: cfg.notify || { hr:"", it:"" }, keys: getKeys() } });
 });
 app.post('/api/config/save', (req,res)=>{
-  const { key, leaderEmails, notify } = req.body || {};
-  if (key !== ADMIN_KEY) return res.status(403).json({ ok:false, error:'Forkert kode.' });
+  const keys = getKeys();
+  const { key, leaderEmails, notify, keys: newKeys } = req.body || {};
+  if (key !== keys.admin) return res.status(403).json({ ok:false, error:'Forkert kode.' });
+
+  const cur = readJson(CONFIG_FILE, {});
   const next = {
-    leaderEmails: leaderEmails || {},
-    notify: { hr: (notify?.hr||"").trim(), it: (notify?.it||"").trim() }
+    leaderEmails: leaderEmails || cur.leaderEmails || {},
+    notify: { hr: (notify?.hr||"").trim(), it: (notify?.it||"").trim() },
+    keys: {
+      access: (newKeys?.access || keys.access).trim(),
+      view:   (newKeys?.view   || keys.view).trim(),
+      admin:  (newKeys?.admin  || keys.admin).trim()
+    }
   };
   writeJson(CONFIG_FILE, next);
   res.json({ ok:true });
